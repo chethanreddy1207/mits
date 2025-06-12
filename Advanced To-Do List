@@ -1,0 +1,129 @@
+import customtkinter as ctk
+import tkinter.messagebox as mb
+from datetime import datetime
+
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
+
+class Task:
+    def __init__(self, text, priority="Medium", completed=False, timestamp=None):
+        self.text = text
+        self.priority = priority
+        self.completed = completed
+        self.timestamp = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M")
+
+class TodoApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.title("📝 Advanced To-Do List")
+        self.geometry("600x600")
+        self.resizable(False, False)
+
+        self.tasks = []
+        self.priority_options = ["Low", "Medium", "High"]
+
+        # Set background color to pink
+        self.configure(fg_color="pink")
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        self.input_frame = ctk.CTkFrame(self, fg_color="pink")
+        self.input_frame.pack(pady=10, padx=10, fill="x")
+
+        # Stack vertically
+        self.task_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Enter a new task")
+        self.task_entry.pack(fill="x", padx=5, pady=5)
+
+        self.priority_menu = ctk.CTkOptionMenu(self.input_frame, values=self.priority_options)
+        self.priority_menu.set("Medium")
+        self.priority_menu.pack(fill="x", padx=5, pady=5)
+
+        self.add_button = ctk.CTkButton(self.input_frame, text="Add ➕", command=self.add_task)
+        self.add_button.pack(fill="x", padx=5, pady=5)
+
+        self.list_frame = ctk.CTkScrollableFrame(self, height=450)
+        self.list_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        self.control_frame = ctk.CTkFrame(self)
+        self.control_frame.pack(pady=10, fill="x")
+
+        self.save_button = ctk.CTkButton(self.control_frame, text=" Save Tasks", command=self.save_tasks)
+        self.save_button.pack(side="left", padx=5)
+
+        self.load_button = ctk.CTkButton(self.control_frame, text=" Load Tasks", command=self.load_tasks)
+        self.load_button.pack(side="left", padx=5)
+
+        self.theme_button = ctk.CTkButton(self.control_frame, text=" Toggle Theme", command=self.toggle_theme)
+        self.theme_button.pack(side="right", padx=5)
+
+    def add_task(self):
+        text = self.task_entry.get().strip()
+        priority = self.priority_menu.get()
+        if not text:
+            mb.showwarning("Input Error", "Task cannot be empty!")
+            return
+
+        task = Task(text=text, priority=priority)
+        self.tasks.append(task)
+        self.task_entry.delete(0, "end")
+        self.render_tasks()
+
+    def toggle_complete(self, index):
+        self.tasks[index].completed = not self.tasks[index].completed
+        self.render_tasks()
+
+    def delete_task(self, index):
+        del self.tasks[index]
+        self.render_tasks()
+
+    def render_tasks(self):
+        for widget in self.list_frame.winfo_children():
+            widget.destroy()
+
+        for idx, task in enumerate(self.tasks):
+            frame = ctk.CTkFrame(self.list_frame)
+            frame.pack(fill="x", pady=2, padx=5)
+
+            display_text = f"[{task.priority}] {task.text} ({task.timestamp})"
+            if task.completed:
+                display_text = " " + display_text
+
+            label = ctk.CTkLabel(frame, text=display_text, anchor="w")
+            label.pack(side="left", fill="x", expand=True, padx=5)
+            label.bind("<Button-1>", lambda e, i=idx: self.toggle_complete(i))
+
+            del_btn = ctk.CTkButton(frame, text="🗑️", width=30, command=lambda i=idx: self.delete_task(i))
+            del_btn.pack(side="right", padx=2)
+
+    def save_tasks(self):
+        try:
+            with open("advanced_tasks.txt", "w") as f:
+                for task in self.tasks:
+                    line = f"{task.text}|{task.priority}|{task.completed}|{task.timestamp}\n"
+                    f.write(line)
+            mb.showinfo("Saved", "Tasks saved successfully!")
+        except Exception as e:
+            mb.showerror("Error", str(e))
+
+    def load_tasks(self):
+        try:
+            self.tasks.clear()
+            with open("advanced_tasks.txt", "r") as f:
+                for line in f:
+                    text, priority, completed, timestamp = line.strip().split("|")
+                    task = Task(text, priority, completed == "True", timestamp)
+                    self.tasks.append(task)
+            self.render_tasks()
+        except FileNotFoundError:
+            mb.showinfo("No File", "No saved tasks found.")
+        except Exception as e:
+            mb.showerror("Error", str(e))
+
+    def toggle_theme(self):
+        current = ctk.get_appearance_mode()
+        ctk.set_appearance_mode("dark" if current == "light" else "light")
+
+if __name__ == "__main__":
+    app = TodoApp()
+    app.mainloop()
